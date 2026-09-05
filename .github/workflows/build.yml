@@ -1,1 +1,107 @@
 
+# ============================================
+# FILE: .github/workflows/build.yml
+# ============================================
+# BUILD IPA MAIL ẢO BẰNG CLANG
+
+name: Build TempMail IPA
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: macos-latest
+
+    steps:
+      - name: Lay ma nguon
+        uses: actions/checkout@v5
+
+      - name: Build IPA bang clang
+        run: |
+          echo "=== KIEM TRA FILE ==="
+          ls -la
+          
+          echo "=== TAO THU MUC APP ==="
+          mkdir -p build/Payload/TempMailApp.app
+          
+          echo "=== TIM SDK iOS ==="
+          SDK_PATH=$(find /Applications -name "iPhoneOS.sdk" -type d 2>/dev/null | head -1)
+          echo "SDK PATH: $SDK_PATH"
+          
+          echo "=== BUILD BINARY BANG CLANG ==="
+          clang \
+            -arch arm64 \
+            -isysroot "$SDK_PATH" \
+            -mios-version-min=12.0 \
+            -fobjc-arc \
+            -Wno-deprecated-declarations \
+            -framework UIKit \
+            -framework Foundation \
+            -framework CoreGraphics \
+            -framework QuartzCore \
+            -o build/Payload/TempMailApp.app/TempMailApp \
+            TempMailApp.m
+          
+          echo "=== KIEM TRA BINARY ==="
+          ls -la build/Payload/TempMailApp.app/
+          
+          echo "=== TAO INFO.PLIST ==="
+          cat > build/Payload/TempMailApp.app/Info.plist << 'EOF'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+              <key>CFBundleDevelopmentRegion</key>
+              <string>en</string>
+              <key>CFBundleExecutable</key>
+              <string>TempMailApp</string>
+              <key>CFBundleIdentifier</key>
+              <string>com.hailam.tempmail</string>
+              <key>CFBundleInfoDictionaryVersion</key>
+              <string>6.0</string>
+              <key>CFBundleName</key>
+              <string>TempMailApp</string>
+              <key>CFBundleDisplayName</key>
+              <string>Mail Ảo</string>
+              <key>CFBundlePackageType</key>
+              <string>APPL</string>
+              <key>CFBundleShortVersionString</key>
+              <string>1.0</string>
+              <key>CFBundleVersion</key>
+              <string>1</string>
+              <key>LSRequiresIPhoneOS</key>
+              <true/>
+              <key>UILaunchStoryboardName</key>
+              <string>LaunchScreen</string>
+              <key>UISupportedInterfaceOrientations</key>
+              <array>
+                  <string>UIInterfaceOrientationPortrait</string>
+              </array>
+              <key>NSAppTransportSecurity</key>
+              <dict>
+                  <key>NSAllowsArbitraryLoads</key>
+                  <true/>
+              </dict>
+          </dict>
+          </plist>
+          EOF
+          
+          echo "=== DONG GOI IPA ==="
+          cd build
+          zip -r ../TempMailApp.ipa Payload/
+          cd ..
+          
+          echo "=== KET QUA ==="
+          ls -la TempMailApp.ipa
+
+      - name: Tai file IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: TempMailApp-IPA
+          path: |
+            **/*.ipa
+          if-no-files-found: error
